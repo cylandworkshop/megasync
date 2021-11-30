@@ -7,6 +7,10 @@ trap ctrl_c INT
 
 function ctrl_c() {
     echo "go away by default"
+
+    killall omxplayer.bin
+    killall python
+    
     exit 0
 }
 
@@ -21,6 +25,10 @@ list_descendants () {
 }
 
 sudo bash -c "echo none >/sys/class/leds/led0/trigger"
+
+cd $SCRIPT_DIR
+
+python start.py
 
 while true; do
     sudo bash -c "echo 1 >/sys/class/leds/led0/brightness"
