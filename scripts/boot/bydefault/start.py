@@ -7,6 +7,12 @@ import getpass
 from time import sleep, time
 import subprocess
 
+import socket
+
+from datetime import datetime
+import ntplib
+
+
 try:
     from subprocess import DEVNULL
 except ImportError:
@@ -41,7 +47,7 @@ class PlayerInterface():
             return False
 
     def initialize(self):
-        sleep(2) # wait for omxplayer to appear on dbus
+        sleep(3) # wait for omxplayer to appear on dbus
         return self._get_dbus_interface()
 
     def playPause(self):
@@ -106,23 +112,48 @@ def setInterval(interval):
 
 print("yo")
 
+localIP     = "0.0.0.0"
+localPort   = 20001
+
+NTP_SERVER = "192.168.1.2"
+
+server = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+server.bind((localIP, localPort))
+print("UDP server up and listening")
+
 controller = PlayerInterface()
-process = subprocess.Popen([OMXPLAYER, "/data/synctest.mp4"], preexec_fn=os.setsid, stdout=DEVNULL, stderr=DEVNULL, stdin=DEVNULL)
+process = subprocess.Popen([OMXPLAYER, "/data/worktown.mp4"], preexec_fn=os.setsid, stdout=DEVNULL, stderr=DEVNULL, stdin=DEVNULL)
 if not controller.initialize():
-	print("omx not ready")
-	exit(0)
+    print("omx not ready")
+    exit(0)
 
 
 controller.pause()
 controller.setPosition(5)
 
-schedule_time = time() + 5
+ntp_client = ntplib.NTPClient()
+ntp_response = ntp_client.request(NTP_SERVER, version=3)
+time_diff = time() - ntp_response.tx_time
 
-while time() < schedule_time:
-	sleep(0.01)
-
-controller.play()
+print("time diff:", ntp_response.tx_time, time(), time_diff)
 
 while True:
-	sleep(1)
-	print(controller.Position() - (time() - schedule_time))
+    message = str(server.recvfrom(256)[0])[2:-1]
+    print("message:", message)
+    if message[0] == "p":
+        schedule_time = int(message[1:])
+        print("scheduled to", schedule_time)
+        break
+
+def get_server_time():
+    return time() - time_diff
+
+while get_server_time() < schedule_time:
+    sleep(0.01)
+
+controller.play()
+print("run video")
+
+while True:
+    sleep(1)
+    print(controller.Position() - (get_server_time() - schedule_time))
