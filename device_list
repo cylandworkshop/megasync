@@ -4,4 +4,5 @@
 #192.168.1.102
 #192.168.1.103
 #home
-raspberrypi.local
+master1.local
+slave30.local

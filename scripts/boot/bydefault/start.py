@@ -2,97 +2,25 @@ import os
 import sys
 import math
 import signal
-import dbus
 import getpass
 from time import sleep, time
 import subprocess
+import json
 
 import socket
+from paho.mqtt import client as mqtt_client
 
 from datetime import datetime
 import ntplib
 
+from screeninfo import get_monitors
 
+from omxplayer_dbus import PlayerInterface
 try:
     from subprocess import DEVNULL
 except ImportError:
     import os
     DEVNULL = open(os.devnull, 'wb')
-
-OMXPLAYER = 'omxplayer'
-OMXPLAYER_DBUS_ADDR='/tmp/omxplayerdbus.%s' % getpass.getuser()
-
-
-#
-# D-Bus player interface
-#
-class PlayerInterface():
-    def _get_dbus_interface(self):
-        try:
-            bus = dbus.bus.BusConnection(
-                open(OMXPLAYER_DBUS_ADDR).readlines()[0].rstrip())
-            proxy = bus.get_object(
-                'org.mpris.MediaPlayer2.omxplayer',
-                '/org/mpris/MediaPlayer2',
-                introspect=False)
-            self.methods = dbus.Interface(
-                proxy, 'org.mpris.MediaPlayer2.Player')
-            self.properties = dbus.Interface(
-                proxy, 'org.freedesktop.DBus.Properties')
-            return True
-        except Exception as e:
-            print("WARNING: dbus connection could not be established")
-            print(e)
-            sleep(5)
-            return False
-
-    def initialize(self):
-        sleep(3) # wait for omxplayer to appear on dbus
-        return self._get_dbus_interface()
-
-    def playPause(self):
-        try:
-            self.methods.Action(16)
-            return True
-        except:
-            print(e)
-            return False
-
-    def play(self):
-        try:
-            self.methods.Play()
-            return True
-        except:
-            print(e)
-            return False
-
-    def pause(self):
-        try:
-            self.methods.Pause()
-            return True
-        except:
-            print(e)
-            return False
-
-
-    def setPosition(self, seconds):
-        try:
-            self.methods.SetPosition(
-                dbus.ObjectPath('/not/used'),
-                dbus.Int64(seconds * 1000000))
-        except Exception as e:
-            print(e)
-            return False
-
-        return True
-
-    def Position(self):
-        try:
-            return self.properties.Get(
-                'org.mpris.MediaPlayer2.Player',
-                'Position') / 1e6
-        except Exception as e:
-            return False
 
 def setInterval(interval):
     def decorator(function):
@@ -110,33 +38,128 @@ def setInterval(interval):
         return wrapper
     return decorator
 
-print("yo")
+player = None
+def run_omx(param):
+    controller = PlayerInterface()
+    process = subprocess.Popen(['omxplayer'] + param, preexec_fn=os.setsid, stdout=DEVNULL, stderr=DEVNULL, stdin=DEVNULL)
+    if not controller.initialize():
+        print("omx not ready")
+        return None
+    controller.pause()
 
-localIP     = "0.0.0.0"
-localPort   = 20001
+    video_size = controller.getVideoResolution()
 
-NTP_SERVER = "192.168.1.2"
+    print("run video", param, "video size:", video_size)
 
-server = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-server.bind((localIP, localPort))
-print("UDP server up and listening")
+    return (controller, process, video_size)
 
-controller = PlayerInterface()
-process = subprocess.Popen([OMXPLAYER, "/data/worktown.mp4"], preexec_fn=os.setsid, stdout=DEVNULL, stderr=DEVNULL, stdin=DEVNULL)
-if not controller.initialize():
-    print("omx not ready")
-    exit(0)
+def set_player_geometry(controller, video_size, screen_size, crop, position, scale):
+    last_crop = (
+        crop[0] * video_size[0],
+        crop[1] * video_size[1],
+        crop[2] * video_size[0],
+        crop[3] * video_size[1]
+    )
+    last_win = (
+        (position[0] +  crop[0]) * screen_size[0],
+        (position[1] + crop[1]) * screen_size[1],
+        (position[0] + scale * crop[2]) * screen_size[0],
+        (position[1] + scale * crop[3]) * screen_size[1]
+    )
 
+    controller.setCrop(last_crop)
+    controller.setVideoPos(last_win)
 
-controller.pause()
-controller.setPosition(5)
+# controller.setPosition(5)
 
-ntp_client = ntplib.NTPClient()
-ntp_response = ntp_client.request(NTP_SERVER, version=3)
-time_diff = time() - ntp_response.tx_time
+my_id = socket.gethostname()[len("slave"):]
+print("id:", my_id)
 
-print("time diff:", ntp_response.tx_time, time(), time_diff)
+screen = get_monitors()[0]
+screen_size = (screen.width, screen.height)
+print("screen size:", screen_size)
 
+time_diff = None
+
+def sync_time(host):
+    global time_diff
+
+    try:
+        ntp_client = ntplib.NTPClient()
+        ntp_response = ntp_client.request(host, version=3)
+    except:
+        print("ntp server not available")
+        return None
+
+    time_diff = time() - ntp_response.tx_time
+
+    print("time diff:", ntp_response.tx_time, time(), time_diff)
+    return (())
+
+def get_server_time():
+    return time() - time_diff
+
+def on_connect(client, userdata, flags, rc):
+    print("connected to broker")
+
+def on_message(client, userdata, msg):
+    global player
+
+    print("topic:", msg.topic)
+    topic = msg.topic.split("/")[1:]
+
+    if len(topic) < 3:
+        print("topic not in layout")
+        return
+
+    if topic[0] != "m":
+        print("non-slave topic")
+        return
+
+    if topic[1] != my_id:
+        print("topic not for you")
+        return
+
+    method = topic[2]
+
+    try:
+        message = json.loads(msg.payload)
+    except:
+        print("non-json message")
+        return
+
+    print("message:", message)
+
+    if method == "sync" and "host" in message:
+        sync_time(message["host"])
+
+    if method == "run" and type(message) == list:
+        if player is not None:
+            print("stop/remove prev video")
+            os.killpg(os.getpgid(player[1].pid), signal.SIGTERM)
+            sleep(2)
+            player = None
+
+        player = run_omx(message)
+
+    if method == "g" and "c" in message and "p" in message and "s" in message:
+        if player is None:
+            print("no active player")
+            return
+
+        try:
+            set_player_geometry(
+                player[0], player[2], screen_size, message["c"], message["p"], message["s"]
+            )
+        except:
+            print("set geometry failed")
+            return
+
+    # if method == "play" and player is not None:
+
+        
+
+'''
 while True:
     message = str(server.recvfrom(256)[0])[2:-1]
     print("message:", message)
@@ -144,10 +167,9 @@ while True:
         schedule_time = int(message[1:])
         print("scheduled to", schedule_time)
         break
+'''
 
-def get_server_time():
-    return time() - time_diff
-
+'''
 while get_server_time() < schedule_time:
     sleep(0.01)
 
@@ -157,3 +179,19 @@ print("run video")
 while True:
     sleep(1)
     print(controller.Position() - (get_server_time() - schedule_time))
+'''
+
+broker = 'master1.local'
+port = 1883
+topic = f"/m/{my_id}/#"
+# topic = "#"
+client_id = socket.gethostname() + "-" + str(time())[-4:]
+
+print("connecting as", client_id)
+
+client = mqtt_client.Client(client_id)
+client.connect(broker, port)
+client.subscribe(topic)
+client.on_message = on_message
+client.on_connect = on_connect
+client.loop_forever()
