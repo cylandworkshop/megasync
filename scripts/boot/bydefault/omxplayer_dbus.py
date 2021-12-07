@@ -75,7 +75,7 @@ class PlayerInterface():
                 'org.mpris.MediaPlayer2.Player',
                 'Position') / 1e6
         except Exception as e:
-            return False
+            return None
 
     def setCrop(self, crop):
         self.methods.SetVideoCropPos(dbus.ObjectPath('/not/used'), dbus.String(" ".join([str(x) for x in crop])))

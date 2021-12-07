@@ -23,6 +23,9 @@ except ImportError:
     import os
     DEVNULL = open(os.devnull, 'wb')
 
+from json import encoder
+encoder.FLOAT_REPR = lambda o: format(o, '.3f')
+
 time_diff = None
 
 def sync_time(host):
@@ -46,6 +49,12 @@ def get_server_time():
 
     return time() - time_diff
 
+NO_PLAYER = 0
+STOP = 1
+SHEDULED = 2
+PLAY = 3
+status = NO_PLAYER
+
 def schedule_play(controller, schedule_time):
     stopped = threading.Event()
 
@@ -56,15 +65,18 @@ def schedule_play(controller, schedule_time):
     print("shedule to", schedule_time)
 
     def waiter():
+        global status
         while True:
             d = schedule_time - get_server_time()
             # print("wait", d)
             if d < 0:
                 print("sheduled play")
                 controller.play()
+                status = PLAY
                 break
             if stopped.wait(0.005):
                 print("shedule canceled")
+                status = STOP
                 break
 
     t = threading.Thread(target=waiter)
@@ -121,17 +133,50 @@ def send_message(topic, message, qos=0):
         return
     payload = json.dumps(message)
     full_topic = f"/s/{my_id}/{topic}"
-    print(f"send {full_topic}: {payload}")
+    # print(f"send {full_topic}: {payload}")
 
     client.publish(full_topic, payload=payload, qos=qos, retain=False)
 
+def send_status(qos=0):
+    position = None
+    if (status == STOP or status == PLAY) and player is not None:
+        position = player[0].Position()
+    elif status == SHEDULED:
+        position = 0 # TODO get scheduled diff
+    else:
+        position = None
+
+    send_message("s", json.dumps([status, position]), qos=qos)
+
+def setInterval(interval):
+    def decorator(function):
+        def wrapper(*args, **kwargs):
+            stopped = threading.Event()
+
+            def loop(): # executed in another thread
+                while not stopped.wait(interval): # until stopped
+                    function(*args, **kwargs)
+
+            t = threading.Thread(target=loop)
+            t.daemon = True # stop if the program exits
+            t.start()
+            return stopped
+        return wrapper
+    return decorator
+
+@setInterval(.5)
+def start_send_status():
+    send_status()
+
 def on_connect(_client, _userdata, _flags, _rc):
     print("connected to broker")
+    start_send_status()
 
 scheduler = None
 def handle_message(msg):
     global player
     global scheduler
+    global status
 
     print("topic:", msg.topic)
     topic = msg.topic.split("/")[1:]
@@ -165,6 +210,12 @@ def handle_message(msg):
             player = None
 
         player = run_omx(message)
+
+        if player is None:
+            return (("err", "cannot start omx/controller"))
+
+        status = STOP
+
         return None
 
     elif method == "g" and "c" in message and "p" in message and "s" in message:
@@ -185,6 +236,7 @@ def handle_message(msg):
 
         print("play")
         player[0].play()
+        status = PLAY
         return None
 
     elif method == "pause":
@@ -193,6 +245,7 @@ def handle_message(msg):
 
         print("pause")
         player[0].pause()
+        status = STOP
         return None
 
     elif method == "seek" and (type(message) == int or type(message) == float):
@@ -211,24 +264,39 @@ def handle_message(msg):
         os.killpg(os.getpgid(player[1].pid), signal.SIGTERM)
         sleep(2)
         player = None
+        status = NO_PLAYER
         return None
 
     elif method == "s" and (type(message) == int or type(message) == float):
         if player is None:
             return (("err", "no active player"))
 
+        player[0].pause()
+
+        if scheduler is not None:
+            print("cancel prev schedule")
+            scheduler.set()
+            scheduler = None
+
         print("schedule to", message)
         scheduler = schedule_play(player[0], message)
         if scheduler is not None:
+            status = SHEDULED
             return None
         else:
             return (("err", "cannot schedule (maybe not in sync)"))
 
     elif method == "cancel":
+        if player is None:
+            return (("err", "no active player"))
+
+        player[0].pause()
+
         print("cancel schedule")
         if scheduler is not None:
             scheduler.set()
             scheduler = None
+            status = STOP
         return None
     else:
         return (("err", "unrecognized method or format"))
@@ -239,8 +307,7 @@ def on_message(_client, _userdata, msg):
         print(res)
         send_message(res[0], res[1], qos=1)
     else:
-        # send status
-        pass
+        send_status(qos=1)
 
 '''
 controller.play()
