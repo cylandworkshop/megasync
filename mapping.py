@@ -27,7 +27,7 @@ def connect_mqtt():
             print("Failed to connect, return code %d\n", rc)
     client = paho.mqtt.client.Client(client_id="", clean_session=True, userdata=None, protocol=mqtt.MQTTv311, transport="tcp")
     client.on_connect = on_connect
-    client.connect("master1.local", port=1883)
+    client.connect("master-1.local", port=1883)
     return client
 
 SLAVE_ID = 30
