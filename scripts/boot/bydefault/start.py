@@ -146,7 +146,7 @@ def send_status(qos=0):
     else:
         position = None
 
-    send_message("s", json.dumps([status, position]), qos=qos)
+    send_message("s", [status, position], qos=qos)
 
 def setInterval(interval):
     def decorator(function):

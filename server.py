@@ -91,7 +91,10 @@ def c_main(stdscr):
 
     def on_message(_client, _userdata, msg):
         topic = msg.topic.split("/")[1:]
+
+        # append_log(str(msg.payload))
         payload = json.loads(msg.payload)
+        # append_log(str(payload))
 
         for slave in slaves:
             slave.handle_message(topic, payload)
@@ -121,8 +124,6 @@ def c_main(stdscr):
 
         char = stdscr.getch()
         if char > 0:
-            append_log(f"you pressed {str(char)}")
-
             if char == ord(' '):
                 current_bar = int(song_duration / BAR)
                 start_time = time() - current_bar * BAR
@@ -132,9 +133,34 @@ def c_main(stdscr):
                 start_time -= 1/BEAT
 
             elif char == ord('t'):
+                append_log("start sync time")
                 for slave in slaves:
-                    slave.sync_time("master1.local")
+                    slave.sync_time("192.168.0.17")
+
+            elif char == ord('r'):
+                append_log("run omx")
+                for slave in slaves:
+                    slave.run(["/data/worktown.mp4"])
+
+            elif char == ord('o'):
+                append_log("play")
+                for slave in slaves:
+                    slave.play()
+
+            elif char == ord('p'):
+                append_log("pause")
+                for slave in slaves:
+                    slave.pause()
+
+            elif char == ord('k'):
+                append_log("kill")
+                for slave in slaves:
+                    slave.kill()
+
+            else:
+                append_log(f"you pressed {str(char)}")
         
+        sleep(0.05)
     return 0
 
 # stdscr.refresh()
