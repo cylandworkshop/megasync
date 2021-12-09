@@ -9,26 +9,38 @@ class SlaveHandler():
         self.idx = idx
 
         self.time_sync_status = "no sync"
-        self.last_status = [0, None]
+        self.last_status = None
         self.last_status_time = time()
 
         self.logger(f"add {self.idx} handler")
 
     def update(self, stdscr, x, y):
-        status = "???"
-        if self.last_status[0] == 0:
-            status = "idle"
-        elif self.last_status[0] == 1:
-            status = "stop"
-        elif self.last_status[0] == 2:
-            status = "wait"
-        elif self.last_status[0] == 3:
-            status = "play"
+        color = curses.color_pair(3)
 
-        stdscr.addstr(y, x, f"slave {self.idx}", curses.color_pair(3))
+
+        if self.last_status is None:
+            color = curses.color_pair(5)
+        elif self.last_status[0] != 0:
+            color = curses.color_pair(4)
+        
+        if time() - self.last_status_time > 2.0:
+            color = curses.color_pair(6)
+
+        status = "???"
+        if self.last_status is not None:
+            if self.last_status[0] == 0:
+                status = "idle"
+            elif self.last_status[0] == 1:
+                status = "stop"
+            elif self.last_status[0] == 2:
+                status = "wait"
+            elif self.last_status[0] == 3:
+                status = "play"
+
+        stdscr.addstr(y, x, f"slave {self.idx}", color)
         stdscr.addstr(" %s (%.01f) |" % (status, time() - self.last_status_time))
         stdscr.addstr(f" {self.time_sync_status}")
-        if self.last_status[1] is not None:
+        if self.last_status is not None and self.last_status[1] is not None:
             stdscr.addstr(y + 1, x, "pos %02d:%06.3f | sheduled 0:00.000" "" % (
                 int(self.last_status[1]/60),
                 self.last_status[1] % 60
@@ -43,15 +55,19 @@ class SlaveHandler():
 
     def run(self, param):
         self.send_message("run", param)
+        self.last_status = None
 
     def play(self):
         self.send_message("play", None)
+        self.last_status = None
 
     def pause(self):
         self.send_message("pause", None)
+        self.last_status = None
 
     def kill(self):
         self.send_message("kill", None)
+        self.last_status = None
 
     def handle_message(self, topic, payload):
         if topic[0] != "s":
