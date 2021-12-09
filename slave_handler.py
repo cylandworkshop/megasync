@@ -12,6 +12,10 @@ class SlaveHandler():
         self.last_status = None
         self.last_status_time = time()
 
+        self.position = [0., 0.]
+        self.crop = [0., 0., 1., 1.]
+        self.scale = 1.
+
         self.logger(f"add {self.idx} handler")
 
     def update(self, stdscr, x, y):
@@ -49,6 +53,11 @@ class SlaveHandler():
     def send_message(self, topic, payload, qos=1):
         self.client.publish(f"/m/{self.idx}/{topic}", payload=json.dumps(payload), qos=qos, retain=False)
 
+
+    def send_geometry(self, qos=0):
+        self.send_message("g", {"c":self.crop,"p":self.position,"s":self.scale}, qos=qos)
+
+
     def sync_time(self, host):
         self.time_sync_status = "sync in progress"
         self.send_message("sync", host)
@@ -84,3 +93,37 @@ class SlaveHandler():
         if topic[2] == "sync":
             self.logger(f"sync result: {str(payload)}")
             self.time_sync_status = "sync: " + str(payload)
+    
+    def set_corner(self, corner, x):
+        if x == "a":
+            # print("left")
+            self.crop[corner * 2 + 0] -= 0.002
+        elif x == "d":
+            # print("right")
+            self.crop[corner * 2 + 0] += 0.002
+        elif x == "w":
+            # print("up")
+            self.crop[corner * 2 + 1] -= 0.002
+        elif x == "s":
+            # print("down")
+            self.crop[corner * 2 + 1] += 0.002
+
+    def set_position(self, x):
+        if x == "a":
+            # print("left")
+            self.position[0] -= 0.002
+        elif x == "d":
+            # print("right")
+            self.position[0] += 0.002
+        elif x == "w":
+            # print("up")
+            self.position[1] -= 0.002
+        elif x == "s":
+            # print("down")
+            self.position[1] += 0.002
+
+    def set_scale(self, x):
+        if x == "z":
+            self.scale += 0.01
+        elif x == "x":
+            self.scale -= 0.01

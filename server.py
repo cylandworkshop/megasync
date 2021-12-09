@@ -74,6 +74,8 @@ def draw_slave(stdscr, slave, idx):
 
     slave.update(stdscr, x, y)
 
+corner = 0
+move = False
 
 def c_main(stdscr):
     stdscr.nodelay(True)
@@ -100,6 +102,34 @@ def c_main(stdscr):
             slave.handle_message(topic, payload)
 
     client.on_message = on_message
+
+    select_slave = None
+    mapping = False
+
+    def handle_mapping(x, idx):
+        global corner
+        global move
+
+        if x == "f":
+            if corner == 0:
+                corner = 1
+                append_log("set corner 1")
+            elif corner == 1:
+                corner = 0
+                append_log("set corner 0")
+        elif x == "v":
+            move = not move
+            append_log(f"set move {move}")
+        
+        elif x == "z" or x == "x":
+            slaves[idx].set_scale(x)
+        else:
+            if move:
+                slaves[idx].set_position(x)
+            else:
+                slaves[idx].set_corner(corner, x)
+        
+        slaves[idx].send_geometry()
     
     start_time = time()
     while True:
@@ -107,12 +137,13 @@ def c_main(stdscr):
         song_duration = time() - start_time
 
         # draw song duration
+        stdscr.addstr(size[0] - 1, 0, " " * int(size[1]/2))
         stdscr.addstr(size[0] - 1, 0, "%02d:%02d:%06.3f" % (
             int(song_duration/3600),
             int(song_duration/60) % 60,
             song_duration % 60
         ), curses.color_pair(1))
-        stdscr.addstr(f" {BPM} BPM {MEASURE[0]}/{MEASURE[1]} (x,y): {size}")
+        stdscr.addstr(f" {BPM} BPM {MEASURE[0]}/{MEASURE[1]} (x,y): {size} select: {str(select_slave)} map: {mapping} c: {corner} m: {move}")
 
         measure = (song_duration/BEAT) % MEASURE[0]
         
@@ -122,9 +153,26 @@ def c_main(stdscr):
         for i, slave in enumerate(slaves):
             draw_slave(stdscr, slave, i)
 
+        def apply_slave(selector, method):
+            if selector is None:
+                for slave in slaves:
+                    method(slave)
+            else:
+                method(slaves[selector])
+
         char = stdscr.getch()
         if char > 0:
-            if char == ord(' '):
+            if char == ord('m'):
+                if mapping:
+                    append_log("disable mapping")
+                    mapping = False
+                else:
+                    append_log("enable mapping")
+                    mapping = True
+            elif mapping and select_slave is not None:
+                handle_mapping(chr(char), select_slave)
+
+            elif char == ord(' '):
                 current_bar = int(song_duration / BAR)
                 start_time = time() - current_bar * BAR
             elif char == curses.KEY_LEFT:
@@ -134,28 +182,38 @@ def c_main(stdscr):
 
             elif char == ord('t'):
                 append_log("start sync time")
-                for slave in slaves:
-                    slave.sync_time("192.168.0.17")
+                apply_slave(select_slave, lambda x: x.sync_time("192.168.0.17"))
 
             elif char == ord('r'):
                 append_log("run omx")
-                for slave in slaves:
-                    slave.run(["/data/worktown.mp4"])
+                apply_slave(select_slave, lambda x: x.run(["/data/worktown.mp4"]))
 
             elif char == ord('o'):
                 append_log("play")
-                for slave in slaves:
-                    slave.play()
+                apply_slave(select_slave, lambda x: x.play())
 
             elif char == ord('p'):
                 append_log("pause")
-                for slave in slaves:
-                    slave.pause()
+                apply_slave(select_slave, lambda x: x.pause())
 
             elif char == ord('k'):
                 append_log("kill")
-                for slave in slaves:
-                    slave.kill()
+                apply_slave(select_slave, lambda x: x.kill())
+
+            elif char == ord('/'):
+                if select_slave is None:
+                    append_log("start select slave")
+                    select_slave = 0
+                else:
+                    append_log("stop select slave")
+                    select_slave = None
+
+            elif char == curses.KEY_UP:
+                if select_slave is not None and select_slave < len(slaves) - 1:
+                    select_slave += 1
+            elif char == curses.KEY_DOWN:
+                if select_slave is not None and select_slave > 0:
+                    select_slave -= 1
 
             else:
                 append_log(f"you pressed {str(char)}")
