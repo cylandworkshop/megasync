@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# for xsession
+chmod 1777 /tmp
+chmod 1777 /var/run
+mkdir -p /var/log/mosquitto
+chmod 1777 /var/log/mosquitto
+
+START=`parted "/dev/mmcblk0" -ms "print free" | tail -n 1 | cut -f 2 -d:`
+END=`parted "/dev/mmcblk0" -ms "print free" | tail -n 1 | cut -f 3 -d:`
+IS_FREE=`parted "/dev/mmcblk0" -ms "print free" | tail -n 1 | cut -f 5 -d:`
+
+if [ $IS_FREE != "free;" ]; then
+	echo "no free space on device"
+	exit 1
+fi
+
+if [ $START = $END ]; then
+	echo "free space = 0"
+	exit 1
+fi
+
+echo "creating data partition for $START to $END"
+
+mount -o remount,rw /
+
+parted /dev/mmcblk0 "mkpart primary fat32 $START $END"
+mkfs -t vfat /dev/mmcblk0p3
+
+mount -o remount,ro /
+
+mount -a

@@ -1,0 +1,14 @@
+proc            /proc           proc    defaults          0       0
+PARTUUID=dd6d92e9-01  /boot           vfat    defaults,ro          0       2
+PARTUUID=dd6d92e9-02  /               ext4    defaults,noatime,ro  0       1
+# a swapfile is not a swap partition, no line here
+#   use  dphys-swapfile swap[on|off]  for that
+tmpfs        /tmp            tmpfs   nosuid,nodev,mode=1777         0       0
+tmpfs        /var/log        tmpfs   nosuid,nodev,uid=1000         0       0
+tmpfs        /var/tmp        tmpfs   nosuid,nodev         0       0
+tmpfs	     /var/run	     tmpfs   nosuid,nodev	  0	  0
+tmpfs        /var/lib/lightdm tmpfs  defaults,noatime,nosuid,size=30m 0 0
+tmpfs        /var/lib/ntp/        tmpfs   nosuid,nodev         0       0
+tmpfs        /home/pi/.config/chromium/ tmpfs nosuid,nodev         0       0
+tmpfs        /home/pi/.config/pulse/ tmpfs nosuid,nodev,uid=1000         0       0
+/dev/mmcblk0p3 /data vfat defaults,nofail,uid=1000,ro 0 2

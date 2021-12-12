@@ -1,0 +1,15 @@
+[Unit]
+Description=Run script by default
+After=network.target
+
+[Service]
+Environment=DISPLAY=:0
+ExecStart=/bin/bash load-flash.sh
+WorkingDirectory=/boot/bydefault
+Restart=always
+RestartSec=2
+User=pi
+
+[Install]
+WantedBy=graphical.target
+
