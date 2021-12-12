@@ -4,3 +4,46 @@
 * Автоматически синхронизировать время со стороны сервера, с рандомной задержкой или последовательно
 
 # ffmpeg -ss 00:11:27 -i A9.mp4 -vframes 1 -q:v 2 A9.jpg
+# composite A9_grid.png A9.jpg A9_all.jpg
+
+mv C1.mp4 1.mp4
+mv C2.mp4 2.mp4
+mv CX.mp4 36.mp4
+mv C3.mp4 7.mp4
+mv C4.mp4 8.mp4
+mv C5.mp4 13.mp4
+mv C6.mp4 14.mp4
+mv CY.mp4 37.mp4
+mv C7.mp4 19.mp4
+mv C8.mp4 20.mp4
+mv C9.mp4 25.mp4
+mv C10.mp4 26.mp4
+mv CZ.mp4 38.mp4
+mv C11.mp4 31.mp4
+mv C12.mp4 32.mp4
+
+mv B1.mp4 3.mp4
+mv B2.mp4 4.mp4
+mv B3.mp4 9.mp4
+mv B4.mp4 10.mp4
+mv B5.mp4 15.mp4
+mv B6.mp4 16.mp4
+mv B7.mp4 21.mp4
+mv B8.mp4 22.mp4
+mv B9.mp4 27.mp4
+mv B10.mp4 28.mp4
+mv B11.mp4 33.mp4
+mv B12.mp4 34.mp4
+
+mv A1.mp4 5.mp4
+mv A2.mp4 6.mp4
+mv A3.mp4 11.mp4
+mv A4.mp4 12.mp4
+mv A5.mp4 17.mp4
+mv A6.mp4 18.mp4
+mv A7.mp4 23.mp4
+mv A8.mp4 24.mp4
+mv A9.mp4 29.mp4
+mv A10.mp4 30.mp4
+mv A11.mp4 35.mp4
+mv A12.mp4 39.mp4
