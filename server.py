@@ -10,7 +10,8 @@ import json
 from slave_handler import SlaveHandler
 
 #slaves = ["slave" + str(x) for x in range(0,10)]
-slave_ids = [1, 30]
+slave_ids = [x for x in range(1, 40)]
+# slave_ids = [0, 1, 2, 3, 50]
 
 LOG_WINDOW_HEIGHT = 10
 
@@ -37,7 +38,7 @@ def connect_mqtt():
 
     client = paho.mqtt.client.Client(client_id="", clean_session=True, userdata=None, protocol=mqtt.MQTTv311, transport="tcp")
     client.on_connect = on_connect
-    client.connect("master-1.local", port=1883)
+    client.connect("master-50.local", port=1883)
     client.subscribe("/s/#")
     return client
 
@@ -182,15 +183,21 @@ def c_main(stdscr):
 
             elif char == ord('t'):
                 append_log("start sync time")
-                apply_slave(select_slave, lambda x: x.sync_time("192.168.0.17"))
+                apply_slave(select_slave, lambda x: x.sync_time("aanper-thinkpad.local"))
 
             elif char == ord('r'):
                 append_log("run omx")
-                apply_slave(select_slave, lambda x: x.run(["/data/worktown.mp4"]))
+                apply_slave(select_slave, lambda x: x.run(["/data/A1.mp4"]))
 
             elif char == ord('o'):
                 append_log("play")
-                apply_slave(select_slave, lambda x: x.play())
+                # apply_slave(select_slave, lambda x: x.play())
+                # TODO get time from centeral NTP
+                apply_slave(select_slave, lambda x: x.schedule(time() + 2))
+
+            elif char == ord('h'):
+                append_log("seek")
+                apply_slave(select_slave, lambda x: x.seek(5))
 
             elif char == ord('p'):
                 append_log("pause")

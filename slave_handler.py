@@ -27,7 +27,7 @@ class SlaveHandler():
         elif self.last_status[0] != 0:
             color = curses.color_pair(4)
         
-        if time() - self.last_status_time > 2.0:
+        if time() - self.last_status_time > 0.7:
             color = curses.color_pair(6)
 
         status = "???"
@@ -72,6 +72,14 @@ class SlaveHandler():
 
     def pause(self):
         self.send_message("pause", None)
+        self.last_status = None
+
+    def schedule(self, time):
+        self.send_message("s", time)
+        self.last_status = None
+
+    def seek(self, position):
+        self.send_message("seek", position)
         self.last_status = None
 
     def kill(self):

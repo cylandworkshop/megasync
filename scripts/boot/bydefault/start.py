@@ -118,7 +118,7 @@ def set_player_geometry(controller, video_size, screen_size, crop, position, sca
 
 # controller.setPosition(5)
 
-my_id = socket.gethostname().split("-")[1]
+my_id = socket.gethostname().split("-")[1].split(".")[0]
 print("id:", my_id)
 
 screen = get_monitors()[0]
@@ -318,7 +318,7 @@ while True:
     print(controller.Position() - (get_server_time() - schedule_time))
 '''
 
-broker = 'master-1.local'
+broker = 'master-50.local'
 port = 1883
 topic = f"/m/{my_id}/#"
 # topic = "#"

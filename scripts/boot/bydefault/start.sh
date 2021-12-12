@@ -30,10 +30,10 @@ cd $SCRIPT_DIR
 
 python start.py
 
-while true; do
-    sudo bash -c "echo 1 >/sys/class/leds/led0/brightness"
-    sleep 0.2s
-    sudo bash -c "echo 0 >/sys/class/leds/led0/brightness"
-    sleep 0.2s
-done
+#while true; do
+#    sudo bash -c "echo 1 >/sys/class/leds/led0/brightness"
+#    sleep 0.2s
+#    sudo bash -c "echo 0 >/sys/class/leds/led0/brightness"
+#    sleep 0.2s
+#done
 

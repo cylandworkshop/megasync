@@ -6,8 +6,9 @@ import getpass
 from time import sleep, time
 import subprocess
 
-OMXPLAYER_DBUS_ADDR='/tmp/omxplayerdbus.%s' % getpass.getuser()
+import threading
 
+OMXPLAYER_DBUS_ADDR='/tmp/omxplayerdbus.%s' % getpass.getuser()
 
 class PlayerInterface():
     def _get_dbus_interface(self):
@@ -30,6 +31,8 @@ class PlayerInterface():
             return False
 
     def initialize(self):
+        self.stopped = None
+
         sleep(3) # wait for omxplayer to appear on dbus
         return self._get_dbus_interface()
 
@@ -42,6 +45,19 @@ class PlayerInterface():
             return False
 
     def play(self):
+        self.stopped = threading.Event()
+
+        def loop(): # executed in another thread
+            while not self.stopped.wait(0.02): # until stopped
+                if self.Position() % 1 < 0.5:
+                    os.system("echo 1 | sudo dd status=none of=/sys/class/leds/led0/brightness")
+                else:
+                    os.system("echo 0 | sudo dd status=none of=/sys/class/leds/led0/brightness")
+
+        t = threading.Thread(target=loop)
+        t.daemon = True # stop if the program exits
+        t.start()
+
         try:
             self.methods.Play()
             return True
@@ -50,6 +66,11 @@ class PlayerInterface():
             return False
 
     def pause(self):
+        if self.stopped is not None:
+            self.stopped.set()
+            self.stopped = None
+        os.system("echo 0 | sudo dd status=none of=/sys/class/leds/led0/brightness")
+
         try:
             self.methods.Pause()
             return True
