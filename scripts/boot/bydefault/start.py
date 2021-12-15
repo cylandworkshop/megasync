@@ -423,11 +423,12 @@ print("connecting as", client_id)
 client = mqtt_client.Client(client_id)
 while True:
     try:
-        client.connect(broker, port)
+        client.connect(broker, port, keepalive=4)
         break
     except Exception as e:
         print(e)
 
 client.on_message = on_message
 client.on_connect = on_connect
+client.reconnect_delay_set(min_delay=1, max_delay=2)
 client.loop_forever(retry_first_connection=True)

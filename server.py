@@ -1,5 +1,6 @@
 import curses
 from time import sleep, time
+import threading
 
 import paho
 import paho.mqtt.client as mqtt
@@ -12,8 +13,8 @@ import json
 from slave_handler import SlaveHandler
 
 #slaves = ["slave" + str(x) for x in range(0,10)]
-slave_ids = [x for x in range(1, 40)]
-# slave_ids = [1]
+# slave_ids = [x for x in range(1, 40)]
+slave_ids = [0, 50]
 
 LOG_WINDOW_HEIGHT = 10
 
@@ -51,13 +52,35 @@ def connect_mqtt():
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
             append_log("Connected to MQTT Broker!")
+            client.subscribe("/s/#")
+            keepalive_cnt = 0
+            # TODO resync time
         else:
             append_log("Failed to connect, return code %d\n" % rc)
 
-    client = paho.mqtt.client.Client(client_id="", clean_session=True, userdata=None, protocol=mqtt.MQTTv311, transport="tcp")
+    def on_disconnect(client, userdata, rc):
+        append_log("disconnected from MQTT Broker!")
+
+    client = paho.mqtt.client.Client(client_id=None, clean_session=True, userdata=None, protocol=mqtt.MQTTv311, transport="tcp")
     client.on_connect = on_connect
-    client.connect("master-50.local", port=1883)
-    client.subscribe("/s/#")
+    client.on_disconnect = on_disconnect
+    client.reconnect_delay_set(min_delay=1, max_delay=2)
+    
+    def mqtt_loop():
+        while True:
+            try:
+                client.connect("master-50.local", port=1883, keepalive=2)
+                break
+            except Exception as e:
+                append_log(e)
+                sleep(2)
+        client.loop_forever()
+
+    
+    t = threading.Thread(target=mqtt_loop)
+    t.daemon = True # stop if the program exits
+    t.start()
+
     return client
 
 BPM = 120
@@ -107,7 +130,6 @@ def c_main(stdscr):
     curses.init_pair(7, curses.COLOR_BLUE, curses.COLOR_BLACK)
 
     client = connect_mqtt()
-    client.loop_start()
 
     slaves = [SlaveHandler(client, x, append_log) for x in slave_ids]
 
