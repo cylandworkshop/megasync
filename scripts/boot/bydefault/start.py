@@ -7,6 +7,7 @@ from time import sleep, time
 import subprocess
 import threading
 import json
+import statistics
 
 import socket
 from paho.mqtt import client as mqtt_client
@@ -15,6 +16,8 @@ from datetime import datetime
 import ntplib
 
 from screeninfo import get_monitors
+
+import random
 
 from omxplayer_dbus import PlayerInterface
 try:
@@ -26,22 +29,107 @@ except ImportError:
 from json import encoder
 encoder.FLOAT_REPR = lambda o: format(o, '.3f')
 
+my_id = socket.gethostname().split("-")[1].split(".")[0]
+print("id:", my_id)
+
+broker = 'master-50.local'
+port = 1883
+# topic = "#"
+client_id = my_id + "-" + str(time())[-4:]
+topic = f"/m/{my_id}/#"
+
+random.seed()
 time_diff = None
+time_stdev = None
 
-def sync_time(host):
+def sync_time_iter(ntp_client, host, accuracy, write_time):
     global time_diff
+    global time_stdev
 
-    try:
-        ntp_client = ntplib.NTPClient()
+    print(f"syncing time, host: {host}, write: {write_time}")
+
+    _time_diffs = []
+    offsets = []
+
+    for _ in range(3):
+        try:
+            ntp_response = ntp_client.request(host, version=3)
+            print(f"tx: {ntp_response.tx_time} delay:{ntp_response.delay/2}")
+        except Exception as e:
+            print("ntp server not available", e)
+            if write_time:
+                return False
+            else:
+                return True
+
+        _time_diffs.append(time() - (ntp_response.tx_time + ntp_response.delay/2))
+        offsets.append(ntp_response.delay/2)
+
+        sleep(1)
+
+    diff_median = statistics.median(_time_diffs)
+    diff_stdev = statistics.stdev(_time_diffs)
+    offset_median = statistics.median(offsets)
+
+    print(f"median: {diff_median}, stdev: {diff_stdev}, latency: {offset_median}")
+
+    if diff_stdev > accuracy:
+        print("low accuracy")
+        if write_time:
+            time_diff = None
+            return False
+        else:
+            return True # just wait for next resync
+
+    if write_time:
+        time_diff = diff_median
+        time_stdev = diff_stdev
+        return True
+    else:
+        time_drift = abs(time_diff - diff_median)
+        print(f"drift {time_drift}")
+
+        if time_drift > accuracy:
+            print(f"time mismatch")
+            time_diff = None
+            return False
+        else:
+            return True
+    
+    # something wrong
+    return False
+
+sync_time_thread = None
+def sync_time(host, accuracy):
+    global sync_time_thread
+
+    if sync_time_thread is not None:
+        return "time already syncing"
+
+    ntp_client = ntplib.NTPClient()
+    '''try:
         ntp_response = ntp_client.request(host, version=3)
-    except:
-        print("ntp server not available")
+    except Exception as e:
+        print("try: ntp server not available", e)
         return False
+    print("test try:", ntp_response.dest_time)'''
 
-    time_diff = time() - ntp_response.tx_time
 
-    print("time diff:", ntp_response.tx_time, time(), time_diff)
-    return True
+    def sync_time_routine():
+        sleep(random.randint(100, 1000) / 1000.) # wait first try
+        while True:
+            #syncing until true
+            while not sync_time_iter(ntp_client, host, accuracy, True):
+                sleep(random.randint(500, 2000) / 1000.) # retry delay
+            # sync ok, resyncing
+            while sync_time_iter(ntp_client, host, accuracy, False):
+                sleep(random.randint(10, 15)) # retry delay
+
+    sync_time_thread = threading.Thread(target=sync_time_routine)
+    sync_time_thread.daemon = True # stop if the program exits
+    sync_time_thread.start()
+
+    return None
 
 def get_server_time():
     if time_diff is None:
@@ -55,7 +143,11 @@ SHEDULED = 2
 PLAY = 3
 status = NO_PLAYER
 
+handle_schedule_time = None
+
 def schedule_play(controller, schedule_time):
+    global handle_schedule_time
+
     stopped = threading.Event()
 
     if get_server_time() is None:
@@ -63,6 +155,7 @@ def schedule_play(controller, schedule_time):
         return None
 
     print("shedule to", schedule_time)
+    handle_schedule_time = schedule_time
 
     def waiter():
         global status
@@ -118,9 +211,6 @@ def set_player_geometry(controller, video_size, screen_size, crop, position, sca
 
 # controller.setPosition(5)
 
-my_id = socket.gethostname().split("-")[1].split(".")[0]
-print("id:", my_id)
-
 screen = get_monitors()[0]
 screen_size = (screen.width, screen.height)
 print("screen size:", screen_size)
@@ -139,14 +229,20 @@ def send_message(topic, message, qos=0):
 
 def send_status(qos=0):
     position = None
-    if (status == STOP or status == PLAY) and player is not None:
+    if status == PLAY and player is not None and handle_schedule_time is not None:
+        position = player[0].Position() - (get_server_time() - handle_schedule_time)
+    elif status == STOP and player is not None:
         position = player[0].Position()
     elif status == SHEDULED:
-        position = 0 # TODO get scheduled diff
+        position = handle_schedule_time
     else:
         position = None
 
-    send_message("s", [status, position], qos=qos)
+    time_status = None
+    if time_diff is not None:
+        time_status = time_stdev
+
+    send_message("s", [status, position, time_status], qos=qos)
 
 def setInterval(interval):
     def decorator(function):
@@ -170,6 +266,7 @@ def start_send_status():
 
 def on_connect(_client, _userdata, _flags, _rc):
     print("connected to broker")
+    _client.subscribe(topic)
     start_send_status()
 
 scheduler = None
@@ -199,8 +296,10 @@ def handle_message(msg):
 
     print("message:", message)
 
-    if method == "sync" and type(message) == str:
-        return (("sync", sync_time(message)))
+    if method == "sync" and "host" in message and "acc" in message:
+        res = sync_time(message["host"], message["acc"])
+        if res is not None:
+            return (("err", res))
 
     elif method == "run" and type(message) == list:
         if player is not None:
@@ -236,6 +335,7 @@ def handle_message(msg):
 
         print("play")
         player[0].play()
+        handle_schedule_time = get_server_time()
         status = PLAY
         return None
 
@@ -318,17 +418,16 @@ while True:
     print(controller.Position() - (get_server_time() - schedule_time))
 '''
 
-broker = 'master-50.local'
-port = 1883
-topic = f"/m/{my_id}/#"
-# topic = "#"
-client_id = my_id + "-" + str(time())[-4:]
-
 print("connecting as", client_id)
 
 client = mqtt_client.Client(client_id)
-client.connect(broker, port)
-client.subscribe(topic)
+while True:
+    try:
+        client.connect(broker, port)
+        break
+    except Exception as e:
+        print(e)
+
 client.on_message = on_message
 client.on_connect = on_connect
-client.loop_forever()
+client.loop_forever(retry_first_connection=True)

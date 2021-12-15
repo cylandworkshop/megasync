@@ -5,29 +5,47 @@ import paho
 import paho.mqtt.client as mqtt
 import paho.mqtt.subscribe as subscribe
 
+import ntplib
+
 import json
 
 from slave_handler import SlaveHandler
 
 #slaves = ["slave" + str(x) for x in range(0,10)]
 slave_ids = [x for x in range(1, 40)]
-# slave_ids = [0, 1, 2, 3, 50]
+# slave_ids = [1]
 
 LOG_WINDOW_HEIGHT = 10
+
+# NTP_SERVER = "us.pool.ntp.org"
+NTP_SERVER = "master-50.local"
 
 def render_log_window(stdscr, log):
     size = stdscr.getmaxyx()
 
-    for i, log_line in enumerate(log[-min(LOG_WINDOW_HEIGHT, size[0]):]):
-        log_line = log_line[:size[1]]
-        padding_len = len(log_line)
-        stdscr.addstr(size[0] - LOG_WINDOW_HEIGHT + i, int(size[1]/2), log_line + " " * padding_len)
+    try:
+        for i, log_line in enumerate(log[-min(LOG_WINDOW_HEIGHT, size[0]):]):
+            log_line = log_line[:size[1]]
+            padding_len = len(log_line)
+            stdscr.addstr(size[0] - LOG_WINDOW_HEIGHT + i, int(size[1]/2), log_line + " " * padding_len)
+    except:
+        return
 
 log = []
 def append_log(log_str):
     global log
     log.append(str(log_str))
     log = log[-LOG_WINDOW_HEIGHT:]
+  
+ntp_client = ntplib.NTPClient()
+ntp_response = ntp_client.request(NTP_SERVER, version=3)
+time_diff = time() - (ntp_response.tx_time + ntp_response.delay/2) 
+
+def get_server_time():
+    if time_diff is None:
+        return None
+
+    return time() - time_diff
 
 def connect_mqtt():
     def on_connect(client, userdata, flags, rc):
@@ -63,7 +81,7 @@ def draw_beat(stdscr, measure):
 
 SLAVE_LINES = 2
 
-def draw_slave(stdscr, slave, idx):
+def draw_slave(stdscr, slave, idx, server_time):
     size = stdscr.getmaxyx()
     unwrap_y = idx * SLAVE_LINES
     size_y = size[0] - LOG_WINDOW_HEIGHT - 1
@@ -73,7 +91,7 @@ def draw_slave(stdscr, slave, idx):
     for i in range(SLAVE_LINES):
         stdscr.addstr(y + i, x, " " * int(size[1]/4))
 
-    slave.update(stdscr, x, y)
+    slave.update(stdscr, x, y, server_time)
 
 corner = 0
 move = False
@@ -86,6 +104,7 @@ def c_main(stdscr):
     curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_GREEN)
     curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_YELLOW)
     curses.init_pair(6, curses.COLOR_WHITE, curses.COLOR_RED)
+    curses.init_pair(7, curses.COLOR_BLUE, curses.COLOR_BLACK)
 
     client = connect_mqtt()
     client.loop_start()
@@ -151,8 +170,9 @@ def c_main(stdscr):
         draw_beat(stdscr, measure)
         render_log_window(stdscr, log)
 
+        server_time = get_server_time()
         for i, slave in enumerate(slaves):
-            draw_slave(stdscr, slave, i)
+            draw_slave(stdscr, slave, i, server_time)
 
         def apply_slave(selector, method):
             if selector is None:
@@ -183,17 +203,23 @@ def c_main(stdscr):
 
             elif char == ord('t'):
                 append_log("start sync time")
-                apply_slave(select_slave, lambda x: x.sync_time("aanper-thinkpad.local"))
+                apply_slave(select_slave, lambda x: x.sync_time(NTP_SERVER))
 
             elif char == ord('r'):
                 append_log("run omx")
-                apply_slave(select_slave, lambda x: x.run(["/data/A1.mp4"]))
+                if select_slave is None:
+                    for i, slave in enumerate(slaves):
+                        slave.run([f"/data/{i + 1}.mp4"])
+                else:
+                    slaves[select_slave].run([f"/data/{i + 1}.mp4"])
 
             elif char == ord('o'):
                 append_log("play")
                 # apply_slave(select_slave, lambda x: x.play())
                 # TODO get time from centeral NTP
-                apply_slave(select_slave, lambda x: x.schedule(time() + 2))
+                server_time = get_server_time()
+                if server_time is not None:
+                    apply_slave(select_slave, lambda x: x.schedule(server_time + 2))
 
             elif char == ord('h'):
                 append_log("seek")

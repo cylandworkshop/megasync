@@ -8,7 +8,7 @@ class SlaveHandler():
         self.client = client
         self.idx = idx
 
-        self.time_sync_status = "no sync"
+        self.time_sync = False
         self.last_status = None
         self.last_status_time = time()
 
@@ -18,7 +18,7 @@ class SlaveHandler():
 
         self.logger(f"add {self.idx} handler")
 
-    def update(self, stdscr, x, y):
+    def update(self, stdscr, x, y, server_time):
         color = curses.color_pair(3)
 
 
@@ -31,24 +31,39 @@ class SlaveHandler():
             color = curses.color_pair(6)
 
         status = "???"
+        position_text = ""
         if self.last_status is not None:
             if self.last_status[0] == 0:
                 status = "idle"
             elif self.last_status[0] == 1:
                 status = "stop"
+                position_text = "stop at: %02d:%06.3f" % (
+                    int(self.last_status[1]/60),
+                    self.last_status[1] % 60
+                )
             elif self.last_status[0] == 2:
                 status = "wait"
+                position_text = "%.03f" % ((self.last_status[1] - server_time))
             elif self.last_status[0] == 3:
                 status = "play"
+                position_text = "drift: %.03f" % ((self.last_status[1]))
+
+        time_status = ""
+        time_color = curses.color_pair(0)
+        if self.last_status is not None and self.last_status[2] is not None:
+            time_status = "sync: " + "%.03f" % ((self.last_status[2]))
+        else:
+            if self.time_sync:
+                time_status = "no sync"
+                time_color = curses.color_pair(2)
+            else:
+                time_status = "wait sync"
+                time_color = curses.color_pair(7)
 
         stdscr.addstr(y, x, f"slave {self.idx}", color)
         stdscr.addstr(" %s (%.01f) |" % (status, time() - self.last_status_time))
-        stdscr.addstr(f" {self.time_sync_status}")
-        if self.last_status is not None and self.last_status[1] is not None:
-            stdscr.addstr(y + 1, x, "pos %02d:%06.3f | sheduled 0:00.000" "" % (
-                int(self.last_status[1]/60),
-                self.last_status[1] % 60
-            ))
+        stdscr.addstr(f" {time_status}", time_color)
+        stdscr.addstr(y + 1, x, position_text)
 
     def send_message(self, topic, payload, qos=1):
         self.client.publish(f"/m/{self.idx}/{topic}", payload=json.dumps(payload), qos=qos, retain=False)
@@ -59,8 +74,8 @@ class SlaveHandler():
 
 
     def sync_time(self, host):
-        self.time_sync_status = "sync in progress"
-        self.send_message("sync", host)
+        self.time_sync = True
+        self.send_message("sync", {"host": host, "acc": 0.05})
 
     def run(self, param):
         self.send_message("run", param)
@@ -97,10 +112,6 @@ class SlaveHandler():
         else:
             self.last_status = payload
             self.last_status_time = time()
-
-        if topic[2] == "sync":
-            self.logger(f"sync result: {str(payload)}")
-            self.time_sync_status = "sync: " + str(payload)
     
     def set_corner(self, corner, x):
         if x == "a":
