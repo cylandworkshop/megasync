@@ -53,6 +53,7 @@ class PlayerInterface():
                     os.system("echo 1 | sudo dd status=none of=/sys/class/leds/led0/brightness")
                 else:
                     os.system("echo 0 | sudo dd status=none of=/sys/class/leds/led0/brightness")
+            self.stopped = None
 
         t = threading.Thread(target=loop)
         t.daemon = True # stop if the program exits
@@ -61,14 +62,14 @@ class PlayerInterface():
         try:
             self.methods.Play()
             return True
-        except:
+        except Exception as e:
             print(e)
             return False
 
     def pause(self):
         if self.stopped is not None:
             self.stopped.set()
-            self.stopped = None
+            
         os.system("echo 0 | sudo dd status=none of=/sys/class/leds/led0/brightness")
 
         try:

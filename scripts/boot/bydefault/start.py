@@ -226,10 +226,14 @@ def send_message(topic, message, qos=0):
 
 def send_status(qos=0):
     position = None
-    if status == PLAY and player is not None and handle_schedule_time is not None:
-        position = player[0].Position() - (get_server_time() - handle_schedule_time)
+    server_time = get_server_time()
+    if status == PLAY and player is not None and handle_schedule_time is not None and server_time is not None:
+        position = player[0].Position() - (server_time - handle_schedule_time)
     elif status == STOP and player is not None:
-        position = player[0].Position()
+        if player is not None:
+            position = player[0].Position()
+        else:
+            position = 0
     elif status == SHEDULED:
         position = handle_schedule_time
     else:
@@ -305,9 +309,11 @@ def handle_message(msg):
     if method == "run" and type(message) == list:
         if player is not None:
             print("stop/remove prev video")
+            player[0].pause()
+            sleep(0.1)
             os.killpg(os.getpgid(player[1].pid), signal.SIGTERM)
-            sleep(2)
             player = None
+            sleep(2)
 
         player = run_omx(message)
 
@@ -361,11 +367,18 @@ def handle_message(msg):
         if player is None:
             return (("err", "no active player"))
 
+        if scheduler is not None:
+            print("cancel prev schedule")
+            scheduler.set()
+            scheduler = None
+
         print("stop/remove prev video")
+        player[0].pause()
+        sleep(0.1)
         os.killpg(os.getpgid(player[1].pid), signal.SIGTERM)
-        sleep(2)
         player = None
         status = NO_PLAYER
+        sleep(2)
         return None
 
     elif method == "s" and (type(message) == int or type(message) == float):

@@ -236,7 +236,8 @@ def c_main(stdscr):
                 append_log("run omx")
                 if select_slave is None:
                     for i, slave in enumerate(slaves):
-                        slave.run([f"/data/{i + 1}.mp4"])
+                        # slave.run([f"/data/{i + 1}.mp4"])
+                        slave.run(["/data/synctest.mp4"])
                 else:
                     slaves[select_slave].run([f"/data/{i + 1}.mp4"])
 
