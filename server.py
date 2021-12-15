@@ -23,12 +23,13 @@ NTP_SERVER = "master-50.local"
 
 def render_log_window(stdscr, log):
     size = stdscr.getmaxyx()
+    log_window_width = int(size[1]/2)
 
     try:
         for i, log_line in enumerate(log[-min(LOG_WINDOW_HEIGHT, size[0]):]):
             log_line = log_line[:size[1]]
-            padding_len = len(log_line)
-            stdscr.addstr(size[0] - LOG_WINDOW_HEIGHT + i, int(size[1]/2), log_line + " " * padding_len)
+            padding_len = log_window_width - len(log_line)
+            stdscr.addstr(size[0] - LOG_WINDOW_HEIGHT + i, log_window_width, log_line + " " * padding_len)
     except:
         return
 
@@ -37,10 +38,14 @@ def append_log(log_str):
     global log
     log.append(str(log_str))
     log = log[-LOG_WINDOW_HEIGHT:]
-  
+
 ntp_client = ntplib.NTPClient()
-ntp_response = ntp_client.request(NTP_SERVER, version=3)
-time_diff = time() - (ntp_response.tx_time + ntp_response.delay/2) 
+time_diff = None
+def update_time_diff():
+    global time_diff
+    ntp_response = ntp_client.request(NTP_SERVER, version=3)
+    time_diff = time() - (ntp_response.tx_time + ntp_response.delay/2)
+    append_log(f"diff: {time_diff} delay:{ntp_response.delay/2}")
 
 def get_server_time():
     if time_diff is None:
@@ -54,7 +59,7 @@ def connect_mqtt():
             append_log("Connected to MQTT Broker!")
             client.subscribe("/s/#")
             keepalive_cnt = 0
-            # TODO resync time
+            update_time_diff()
         else:
             append_log("Failed to connect, return code %d\n" % rc)
 

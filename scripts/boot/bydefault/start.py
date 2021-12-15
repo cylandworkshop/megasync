@@ -99,31 +99,28 @@ def sync_time_iter(ntp_client, host, accuracy, write_time):
     # something wrong
     return False
 
-sync_time_thread = None
-def sync_time(host, accuracy):
-    global sync_time_thread
+NTP_HOST = broker
+NTP_ACCURACY = 0.01
 
-    if sync_time_thread is not None:
-        return "time already syncing"
+sync_time_resync = None
+def sync_time():
+    global sync_time_resync
+
+    if sync_time_resync is not None:
+        sync_time_resync.set()
 
     ntp_client = ntplib.NTPClient()
-    '''try:
-        ntp_response = ntp_client.request(host, version=3)
-    except Exception as e:
-        print("try: ntp server not available", e)
-        return False
-    print("test try:", ntp_response.dest_time)'''
 
+    sync_time_resync = threading.Event()
 
     def sync_time_routine():
         sleep(random.randint(100, 1000) / 1000.) # wait first try
         while True:
             #syncing until true
-            while not sync_time_iter(ntp_client, host, accuracy, True):
+            while not sync_time_iter(ntp_client, NTP_HOST, NTP_ACCURACY, True):
                 sleep(random.randint(500, 2000) / 1000.) # retry delay
-            # sync ok, resyncing
-            while sync_time_iter(ntp_client, host, accuracy, False):
-                sleep(random.randint(10, 15)) # retry delay
+
+            sync_time_resync.wait()
 
     sync_time_thread = threading.Thread(target=sync_time_routine)
     sync_time_thread.daemon = True # stop if the program exits
@@ -264,10 +261,19 @@ def setInterval(interval):
 def start_send_status():
     send_status()
 
+start_send_status_handler = None
 def on_connect(_client, _userdata, _flags, _rc):
+    global start_send_status_handler
+    global time_diff
+    global time_stdev
+
+    time_diff = None
+    time_stdev = None
     print("connected to broker")
     _client.subscribe(topic)
-    start_send_status()
+    if start_send_status_handler is None:
+        start_send_status_handler = start_send_status()
+    sync_time()
 
 scheduler = None
 def handle_message(msg):
@@ -296,12 +302,7 @@ def handle_message(msg):
 
     print("message:", message)
 
-    if method == "sync" and "host" in message and "acc" in message:
-        res = sync_time(message["host"], message["acc"])
-        if res is not None:
-            return (("err", res))
-
-    elif method == "run" and type(message) == list:
+    if method == "run" and type(message) == list:
         if player is not None:
             print("stop/remove prev video")
             os.killpg(os.getpgid(player[1].pid), signal.SIGTERM)
