@@ -73,7 +73,7 @@ class SlaveHandler():
 
 
     def send_geometry(self, qos=0):
-        self.logger(f"c:{self.crop} p:{self.position}")
+        # self.logger(f"c:{self.crop} p:{self.position}")
         self.send_message("g", {"c":self.crop,"p":self.position}, qos=qos)
 
 

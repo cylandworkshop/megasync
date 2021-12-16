@@ -21,6 +21,12 @@ LOG_WINDOW_HEIGHT = 10
 # NTP_SERVER = "us.pool.ntp.org"
 NTP_SERVER = "master-50.local"
 
+BPM = 120
+MEASURE = (4,4)
+BEAT = 60/(BPM * (MEASURE[1]/4))
+BAR = BEAT * MEASURE[0]
+MAPPING_PATH = "mapping/"
+
 def render_log_window(stdscr, log):
     size = stdscr.getmaxyx()
     log_window_width = int(size[1]/2)
@@ -88,10 +94,6 @@ def connect_mqtt():
 
     return client
 
-BPM = 120
-MEASURE = (4,4)
-BEAT = 60/(BPM * (MEASURE[1]/4))
-BAR = BEAT * MEASURE[0]
 
 def draw_beat(stdscr, measure):
     size = stdscr.getmaxyx()
@@ -137,6 +139,15 @@ def c_main(stdscr):
     client = connect_mqtt()
 
     slaves = [SlaveHandler(client, x, append_log) for x in slave_ids]
+    for slave in slaves:
+        try:
+            f = open(MAPPING_PATH + str(slave.get_idx()) + ".map", "r")
+            s = f.read()
+            s = json.loads(s)
+            # append_log(s)
+            slave.set_mapping(s)
+        except Exception as e:
+            append_log(e)
 
     def on_message(_client, _userdata, msg):
         topic = msg.topic.split("/")[1:]
@@ -167,10 +178,6 @@ def c_main(stdscr):
         elif x == "v":
             move = not move
             append_log(f"set move {move}")
-
-        elif x == "]":
-            f = open(str(slaves[idx].get_idx()) + ".map", "w")
-            f.write(json.dumps(slaves[idx].get_mapping()))
 
         else:
             if move:
@@ -230,6 +237,15 @@ def c_main(stdscr):
             elif char == curses.KEY_RIGHT:
                 start_time -= 1/BEAT
 
+            elif char == ord('\n'):
+                append_log("saving mapping")
+                for slave in slaves:
+                    try:
+                        f = open(MAPPING_PATH + str(slave.get_idx()) + ".map", "w")
+                        f.write(json.dumps(slave.get_mapping()))
+                    except Exception as e:
+                        append_log(e)
+
             elif char == ord('t'):
                 append_log("start sync time")
                 apply_slave(select_slave, lambda x: x.sync_time(NTP_SERVER))
@@ -237,17 +253,8 @@ def c_main(stdscr):
             elif char == ord('r'):
                 append_log("run omx")
                 if select_slave is None:
-                    for i, slave in enumerate(slaves):
+                    for slave in slaves:
                         slave.run([f"/data/{slave.get_idx()}.mp4"])
-                        try:
-                            f = open(str(slave.get_idx()) + ".map", "r")
-                            s = f.read()
-                            s = json.loads(s)
-                            append_log(s)
-                            slave.set_mapping(s)
-                        except Exception as e:
-                            pass
-                            # append_log(e)
                         # slave.run(["/data/synctest.mp4"])
                 else:
                     slaves[select_slave].run([f"/data/{slaves[select_slave].get_idx()}.jpg.mp4"])
