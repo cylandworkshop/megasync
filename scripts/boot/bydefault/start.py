@@ -189,7 +189,7 @@ def run_omx(param):
 
     return (controller, process, video_size)
 
-def set_player_geometry(controller, video_size, screen_size, crop, position, scale):
+def set_player_geometry(controller, video_size, screen_size, crop, position):
     last_crop = (
         crop[0] * video_size[0],
         crop[1] * video_size[1],
@@ -199,8 +199,8 @@ def set_player_geometry(controller, video_size, screen_size, crop, position, sca
     last_win = (
         (position[0] +  crop[0]) * screen_size[0],
         (position[1] + crop[1]) * screen_size[1],
-        (position[0] + scale * crop[2]) * screen_size[0],
-        (position[1] + scale * crop[3]) * screen_size[1]
+        (position[0] + position[2] * crop[2]) * screen_size[0],
+        (position[1] + position[3] * crop[3]) * screen_size[1]
     )
 
     controller.setCrop(last_crop)
@@ -330,7 +330,7 @@ def handle_message(msg):
 
         try:
             set_player_geometry(
-                player[0], player[2], screen_size, message["c"], message["p"], message["s"]
+                player[0], player[2], screen_size, message["c"], message["p"]
             )
             return None
         except:

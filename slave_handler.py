@@ -12,7 +12,7 @@ class SlaveHandler():
         self.last_status = None
         self.last_status_time = time()
 
-        self.position = [0., 0.]
+        self.position = [0., 0., 1., 1.]
         self.crop = [0., 0., 1., 1.]
         self.scale = 1.
 
@@ -70,7 +70,7 @@ class SlaveHandler():
 
 
     def send_geometry(self, qos=0):
-        self.send_message("g", {"c":self.crop,"p":self.position,"s":self.scale}, qos=qos)
+        self.send_message("g", {"c":self.crop,"p":self.position}, qos=qos)
 
 
     def sync_time(self, host):
@@ -127,22 +127,23 @@ class SlaveHandler():
             # print("down")
             self.crop[corner * 2 + 1] += 0.002
 
-    def set_position(self, x):
+    def set_position(self, corner, x):
         if x == "a":
             # print("left")
-            self.position[0] -= 0.002
+            self.position[corner * 2 + 0] -= 0.002
         elif x == "d":
             # print("right")
-            self.position[0] += 0.002
+            self.position[corner * 2 + 0] += 0.002
         elif x == "w":
             # print("up")
-            self.position[1] -= 0.002
+            self.position[corner * 2 + 1] -= 0.002
         elif x == "s":
             # print("down")
-            self.position[1] += 0.002
+            self.position[corner * 2 + 1] += 0.002
 
-    def set_scale(self, x):
-        if x == "z":
-            self.scale += 0.01
-        elif x == "x":
-            self.scale -= 0.01
+    def get_mapping(self):
+        return {"position": self.position, "crop": self.crop}
+
+    def set_mapping(self, mapping):
+        self.position = mapping["position"]
+        self.crop = mapping["crop"]
