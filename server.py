@@ -167,6 +167,7 @@ def c_main(stdscr):
     client.on_message = on_message
 
     select_slave = None
+    last_selected_slave = 0
     mapping = False
 
     def handle_mapping(x, idx):
@@ -231,6 +232,14 @@ def c_main(stdscr):
                 else:
                     append_log("enable mapping")
                     mapping = True
+
+            elif char == curses.KEY_UP:
+                if select_slave is not None and select_slave < len(slaves) - 1:
+                    select_slave += 1
+            elif char == curses.KEY_DOWN:
+                if select_slave is not None and select_slave > 0:
+                    select_slave -= 1
+
             elif mapping and select_slave is not None:
                 handle_mapping(chr(char), select_slave)
 
@@ -286,17 +295,11 @@ def c_main(stdscr):
             elif char == ord('/'):
                 if select_slave is None:
                     append_log("start select slave")
-                    select_slave = 0
+                    select_slave = last_selected_slave
                 else:
                     append_log("stop select slave")
+                    last_selected_slave = select_slave
                     select_slave = None
-
-            elif char == curses.KEY_UP:
-                if select_slave is not None and select_slave < len(slaves) - 1:
-                    select_slave += 1
-            elif char == curses.KEY_DOWN:
-                if select_slave is not None and select_slave > 0:
-                    select_slave -= 1
 
             else:
                 append_log(f"you pressed {str(char)}")
