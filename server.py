@@ -13,8 +13,8 @@ import json
 from slave_handler import SlaveHandler
 
 #slaves = ["slave" + str(x) for x in range(0,10)]
-#slave_ids = [x for x in range(1, 40)]
-slave_ids = [25, 26]
+slave_ids = [x for x in range(1, 40)]
+# slave_ids = [25, 26]
 
 LOG_WINDOW_HEIGHT = 10
 
@@ -116,15 +116,23 @@ def draw_beat(stdscr, measure):
 
 SLAVE_LINES = 2
 
-def draw_slave(stdscr, slave, idx, server_time):
+def draw_slave(stdscr, slave, idx, server_time, selected):
     size = stdscr.getmaxyx()
     unwrap_y = idx * SLAVE_LINES
     size_y = size[0] - LOG_WINDOW_HEIGHT - 1
+    size_x = int(size[1]/4)
+
     y = int(unwrap_y % size_y)
     x = int(unwrap_y / size_y) * int(size[1]/4)
 
+    if selected is not None and selected == idx:
+        for i in range(SLAVE_LINES):
+            stdscr.addch(y + i, x, curses.ACS_BOARD, curses.color_pair(7))
+        size_x -= 1
+        x += 1
+
     for i in range(SLAVE_LINES):
-        stdscr.addstr(y + i, x, " " * int(size[1]/4))
+        stdscr.addstr(y + i, x, " " * size_x)
 
     slave.update(stdscr, x, y, server_time)
 
@@ -214,7 +222,7 @@ def c_main(stdscr):
 
         server_time = get_server_time()
         for i, slave in enumerate(slaves):
-            draw_slave(stdscr, slave, i, server_time)
+            draw_slave(stdscr, slave, i, server_time, select_slave)
 
         def apply_slave(selector, method):
             if selector is None:
@@ -233,10 +241,10 @@ def c_main(stdscr):
                     append_log("enable mapping")
                     mapping = True
 
-            elif char == curses.KEY_UP:
+            elif char == curses.KEY_DOWN:
                 if select_slave is not None and select_slave < len(slaves) - 1:
                     select_slave += 1
-            elif char == curses.KEY_DOWN:
+            elif char == curses.KEY_UP:
                 if select_slave is not None and select_slave > 0:
                     select_slave -= 1
 
