@@ -27,6 +27,11 @@ BEAT = 60/(BPM * (MEASURE[1]/4))
 BAR = BEAT * MEASURE[0]
 MAPPING_PATH = "mapping/"
 
+def get_video(idx):
+    # "/data/synctest.mp4"
+    # return [f"/data/{idx}.jpg.mp4"]
+    return [f"/data/{idx}.mp4"]
+
 def render_log_window(stdscr, log):
     size = stdscr.getmaxyx()
     log_window_width = int(size[1]/2)
@@ -254,10 +259,9 @@ def c_main(stdscr):
                 append_log("run omx")
                 if select_slave is None:
                     for slave in slaves:
-                        slave.run([f"/data/{slave.get_idx()}.mp4"])
-                        # slave.run(["/data/synctest.mp4"])
+                        slave.run(get_video(slave.get_idx()))
                 else:
-                    slaves[select_slave].run([f"/data/{slaves[select_slave].get_idx()}.jpg.mp4"])
+                    slaves[select_slave].run(get_video(slaves[select_slave].get_idx()))
 
             elif char == ord('o'):
                 append_log("play")
