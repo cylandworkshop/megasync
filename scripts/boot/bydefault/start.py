@@ -324,7 +324,7 @@ def handle_message(msg):
 
         return None
 
-    elif method == "g" and "c" in message and "p" in message and "s" in message:
+    elif method == "g" and "c" in message and "p" in message:
         if player is None:
             return (("err", "no active player"))
 

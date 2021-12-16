@@ -18,6 +18,9 @@ class SlaveHandler():
 
         self.logger(f"add {self.idx} handler")
 
+    def get_idx(self):
+        return self.idx
+
     def update(self, stdscr, x, y, server_time):
         color = curses.color_pair(3)
 
@@ -35,7 +38,7 @@ class SlaveHandler():
         if self.last_status is not None:
             if self.last_status[0] == 0:
                 status = "idle"
-            elif self.last_status[0] == 1:
+            elif self.last_status[0] == 1 and self.last_status[1] is not None:
                 status = "stop"
                 position_text = "stop at: %02d:%06.3f" % (
                     int(self.last_status[1]/60),
@@ -70,6 +73,7 @@ class SlaveHandler():
 
 
     def send_geometry(self, qos=0):
+        self.logger(f"c:{self.crop} p:{self.position}")
         self.send_message("g", {"c":self.crop,"p":self.position}, qos=qos)
 
 
@@ -94,6 +98,7 @@ class SlaveHandler():
         self.last_status = None
 
     def seek(self, position):
+        # self.send_geometry(qos=1)
         self.send_message("seek", position)
         self.last_status = None
 

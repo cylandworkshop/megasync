@@ -13,8 +13,8 @@ import json
 from slave_handler import SlaveHandler
 
 #slaves = ["slave" + str(x) for x in range(0,10)]
-slave_ids = [x for x in range(1, 40)]
-# slave_ids = [0, 50]
+#slave_ids = [x for x in range(1, 40)]
+slave_ids = [25, 26]
 
 LOG_WINDOW_HEIGHT = 10
 
@@ -169,8 +169,8 @@ def c_main(stdscr):
             append_log(f"set move {move}")
 
         elif x == "]":
-            f = open(str(idx + 1) + ".map", "w")
-            f.write(json.dumps(slaves[idx].get_position()))
+            f = open(str(slaves[idx].get_idx()) + ".map", "w")
+            f.write(json.dumps(slaves[idx].get_mapping()))
 
         else:
             if move:
@@ -238,15 +238,19 @@ def c_main(stdscr):
                 append_log("run omx")
                 if select_slave is None:
                     for i, slave in enumerate(slaves):
-                        slave.run([f"/data/{i + 1}.jpg.mp4"])
+                        slave.run([f"/data/{slave.get_idx()}.mp4"])
                         try:
-                            f = open(str(i + 1) + ".map", "r")
-                            slave.set_mapping(json.loads(f.read()))
+                            f = open(str(slave.get_idx()) + ".map", "r")
+                            s = f.read()
+                            s = json.loads(s)
+                            append_log(s)
+                            slave.set_mapping(s)
                         except Exception as e:
-                            append_log(e)
+                            pass
+                            # append_log(e)
                         # slave.run(["/data/synctest.mp4"])
                 else:
-                    slaves[select_slave].run([f"/data/{i + 1}.jpg.mp4"])
+                    slaves[select_slave].run([f"/data/{slaves[select_slave].get_idx()}.jpg.mp4"])
 
             elif char == ord('o'):
                 append_log("play")
