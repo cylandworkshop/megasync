@@ -14,8 +14,8 @@ master-50.local
 #slave-12.local
 #slave-13.local
 #slave-14.local
-#slave-15.local
-#slave-16.local
+slave-15.local
+slave-16.local
 #slave-17.local
 #slave-18.local
 #slave-19.local

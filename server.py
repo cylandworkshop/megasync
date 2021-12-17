@@ -14,7 +14,7 @@ from slave_handler import SlaveHandler
 
 #slaves = ["slave" + str(x) for x in range(0,10)]
 #slave_ids = [x for x in range(1, 40)]
-slave_ids = [50]
+slave_ids = [13, 14, 15, 16, 19, 20, 21, 22]
 
 LOG_WINDOW_HEIGHT = 10
 
@@ -29,7 +29,7 @@ MAPPING_PATH = "mapping/"
 
 def get_video(idx):
     # return ["/data/synctest.mp4"]
-    # return [f"/data/{idx}.jpg.mp4"]
+    return [f"/data/{idx}.jpg.mp4"]
     # return [f"/data/{idx}.mp4"]
     # return ["/data/7.jpg.mp4"]
     # return ["/data/11.jpg.mp4"]
@@ -40,7 +40,7 @@ def get_video(idx):
     # return ["/data/33.jpg.mp4"]
     # return ["/data/20.jpg.mp4"]
     # return ["/data/28.jpg.mp4"]
-    return ["/data/32.jpg.mp4"]
+    # return ["/data/32.jpg.mp4"]
 
 def render_log_window(stdscr, log):
     size = stdscr.getmaxyx()
