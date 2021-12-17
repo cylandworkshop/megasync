@@ -226,12 +226,18 @@ def send_message(topic, message, qos=0):
 
 def send_status(qos=0):
     position = None
+    player_position = None
+
     server_time = get_server_time()
-    if status == PLAY and player is not None and handle_schedule_time is not None and server_time is not None:
-        position = player[0].Position() - (server_time - handle_schedule_time)
-    elif status == STOP and player is not None:
-        if player is not None:
-            position = player[0].Position()
+
+    if player is not None:
+        player_position = player[0].Position()
+    
+    if status == PLAY and player_position is not None and handle_schedule_time is not None and server_time is not None:
+        position =  - (server_time - handle_schedule_time)
+    elif status == STOP and player_position is not None:
+        if player_position is not None:
+            position = player_position
         else:
             position = 0
     elif status == SHEDULED:

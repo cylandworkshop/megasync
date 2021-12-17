@@ -49,7 +49,11 @@ class PlayerInterface():
 
         def loop(): # executed in another thread
             while not self.stopped.wait(0.02): # until stopped
-                if self.Position() % 1 < 0.5:
+                position = self.Position()
+                if position is None:
+                    return
+                
+                if position % 1 < 0.5:
                     os.system("echo 1 | sudo dd status=none of=/sys/class/leds/led0/brightness")
                 else:
                     os.system("echo 0 | sudo dd status=none of=/sys/class/leds/led0/brightness")

@@ -47,7 +47,7 @@ class SlaveHandler():
             elif self.last_status[0] == 2:
                 status = "wait"
                 position_text = "%.03f" % ((self.last_status[1] - server_time))
-            elif self.last_status[0] == 3:
+            elif self.last_status[0] == 3 and self.last_status[1] is not None:
                 status = "play"
                 position_text = "drift: %.03f" % ((self.last_status[1]))
 

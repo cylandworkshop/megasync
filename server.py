@@ -13,8 +13,8 @@ import json
 from slave_handler import SlaveHandler
 
 #slaves = ["slave" + str(x) for x in range(0,10)]
-slave_ids = [x for x in range(1, 40)]
-# slave_ids = [25, 26]
+#slave_ids = [x for x in range(1, 40)]
+slave_ids = [50]
 
 LOG_WINDOW_HEIGHT = 10
 
@@ -28,9 +28,19 @@ BAR = BEAT * MEASURE[0]
 MAPPING_PATH = "mapping/"
 
 def get_video(idx):
-    # "/data/synctest.mp4"
+    # return ["/data/synctest.mp4"]
     # return [f"/data/{idx}.jpg.mp4"]
-    return [f"/data/{idx}.mp4"]
+    # return [f"/data/{idx}.mp4"]
+    # return ["/data/7.jpg.mp4"]
+    # return ["/data/11.jpg.mp4"]
+    # return ["/data/13.jpg.mp4"]
+    # return ["/data/36.jpg.mp4"]
+    # return ["/data/38.jpg.mp4"]
+    # return ["/data/24.jpg.mp4"]
+    # return ["/data/33.jpg.mp4"]
+    # return ["/data/20.jpg.mp4"]
+    # return ["/data/28.jpg.mp4"]
+    return ["/data/32.jpg.mp4"]
 
 def render_log_window(stdscr, log):
     size = stdscr.getmaxyx()
@@ -157,6 +167,7 @@ def c_main(stdscr):
             f = open(MAPPING_PATH + str(slave.get_idx()) + ".map", "r")
             s = f.read()
             s = json.loads(s)
+            f.close()
             # append_log(s)
             slave.set_mapping(s)
         except Exception as e:
@@ -265,6 +276,7 @@ def c_main(stdscr):
                     try:
                         f = open(MAPPING_PATH + str(slave.get_idx()) + ".map", "w")
                         f.write(json.dumps(slave.get_mapping()))
+                        f.close()
                     except Exception as e:
                         append_log(e)
 
@@ -290,7 +302,11 @@ def c_main(stdscr):
 
             elif char == ord('h'):
                 append_log("seek")
-                apply_slave(select_slave, lambda x: x.seek(5))
+                apply_slave(select_slave, lambda x: x.seek(2))
+
+            elif char == ord('g'):
+                append_log("send geometry")
+                apply_slave(select_slave, lambda x: x.send_geometry())
 
             elif char == ord('p'):
                 append_log("pause")
