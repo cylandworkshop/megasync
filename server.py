@@ -15,7 +15,7 @@ from slave_handler import SlaveHandler
 #slaves = ["slave" + str(x) for x in range(0,10)]
 #slave_ids = [x for x in range(1, 40)]
 # slave_ids = [13, 14, 15, 16, 19, 20, 21, 22]
-slave_ids = [23, 24]
+slave_ids = [17, 18, 23, 24]
 
 LOG_WINDOW_HEIGHT = 10
 
