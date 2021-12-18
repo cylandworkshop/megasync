@@ -16,7 +16,8 @@ from slave_handler import SlaveHandler
 #slave_ids = [x for x in range(1, 40)]
 # slave_ids = [13, 14, 15, 16, 19, 20, 21, 22]
 # slave_ids = [17, 18, 23, 24]
-slave_ids = [33, 34]
+slave_ids = [36]
+d_270_idx = [6]
 
 LOG_WINDOW_HEIGHT = 10
 
@@ -30,19 +31,25 @@ BAR = BEAT * MEASURE[0]
 MAPPING_PATH = "mapping/"
 
 def get_video(idx):
-    # return ["/data/synctest.mp4"]
-    return [f"/data/{idx}.jpg.mp4"]
-    # return [f"/data/{idx}.mp4"]
-    # return ["/data/7.jpg.mp4"]
-    # return ["/data/11.jpg.mp4"]
-    # return ["/data/13.jpg.mp4"]
-    # return ["/data/36.jpg.mp4"]
-    # return ["/data/38.jpg.mp4"]
-    # return ["/data/24.jpg.mp4"]
-    # return ["/data/33.jpg.mp4"]
-    # return ["/data/20.jpg.mp4"]
-    # return ["/data/28.jpg.mp4"]
-    # return ["/data/32.jpg.mp4"]
+    # res = ["/data/synctest.mp4"]
+    res = [f"/data/{idx}.jpg.mp4"]
+    # res = [f"/data/{idx}.mp4"]
+    # res = ["/data/7.jpg.mp4"]
+    # res = ["/data/11.jpg.mp4"]
+    # res = ["/data/13.jpg.mp4"]
+    # res = ["/data/36.jpg.mp4"]
+    # res = ["/data/38.jpg.mp4"]
+    # res = ["/data/24.jpg.mp4"]
+    # res = ["/data/33.jpg.mp4"]
+    # res = ["/data/20.jpg.mp4"]
+    # res = ["/data/28.jpg.mp4"]
+    # res = ["/data/32.jpg.mp4"]
+    if idx in d_270_idx:
+        res.append("--orientation")
+        res.append("270")
+
+    return res
+
 
 def render_log_window(stdscr, log):
     size = stdscr.getmaxyx()
