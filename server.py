@@ -13,18 +13,18 @@ import json
 from slave_handler import SlaveHandler
 
 #slaves = ["slave" + str(x) for x in range(0,10)]
-#slave_ids = [x for x in range(1, 40)]
+slave_ids = [x for x in range(1, 40)]
 # slave_ids = [13, 14, 15, 16, 19, 20, 21, 22]
 # slave_ids = [17, 18, 23, 24]
-slave_ids = [36]
-d_270_idx = [6]
+# slave_ids = [13, 14]
+d_270_idx = [6, 30]
 
 LOG_WINDOW_HEIGHT = 10
 
 # NTP_SERVER = "us.pool.ntp.org"
 NTP_SERVER = "master-50.local"
 
-BPM = 120
+BPM = 60
 MEASURE = (4,4)
 BEAT = 60/(BPM * (MEASURE[1]/4))
 BAR = BEAT * MEASURE[0]
@@ -32,8 +32,8 @@ MAPPING_PATH = "mapping/"
 
 def get_video(idx):
     # res = ["/data/synctest.mp4"]
-    res = [f"/data/{idx}.jpg.mp4"]
-    # res = [f"/data/{idx}.mp4"]
+    # res = [f"/data/{idx}.jpg.mp4"]
+    res = [f"/data/{idx}.mp4"]
     # res = ["/data/7.jpg.mp4"]
     # res = ["/data/11.jpg.mp4"]
     # res = ["/data/13.jpg.mp4"]
@@ -307,11 +307,11 @@ def c_main(stdscr):
                 # TODO get time from centeral NTP
                 server_time = get_server_time()
                 if server_time is not None:
-                    apply_slave(select_slave, lambda x: x.schedule(server_time + 2))
+                    apply_slave(select_slave, lambda x: x.schedule(server_time + 4))
 
             elif char == ord('h'):
                 append_log("seek")
-                apply_slave(select_slave, lambda x: x.seek(2))
+                apply_slave(select_slave, lambda x: x.seek(5))
 
             elif char == ord('g'):
                 append_log("send geometry")
