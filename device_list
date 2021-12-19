@@ -14,8 +14,8 @@ master-50.local
 #slave-12.local
 #slave-13.local
 #slave-14.local
-slave-15.local
-slave-16.local
+#slave-15.local
+#slave-16.local
 #slave-17.local
 #slave-18.local
 #slave-19.local
@@ -24,8 +24,8 @@ slave-16.local
 #slave-22.local
 #slave-23.local
 #slave-24.local
-#slave-25.local
-#slave-26.local
+slave-25.local
+slave-26.local
 #slave-27.local
 #slave-28.local
 #slave-29.local
@@ -35,8 +35,8 @@ slave-16.local
 #slave-33.local
 #slave-34.local
 #slave-35.local
-#slave-36.local
-#slave-37.local
+slave-36.local
+slave-37.local
 #slave-38.local
 #slave-39.local
 #home

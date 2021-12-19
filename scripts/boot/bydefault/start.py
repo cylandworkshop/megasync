@@ -234,7 +234,7 @@ def send_status(qos=0):
         player_position = player[0].Position()
     
     if status == PLAY and player_position is not None and handle_schedule_time is not None and server_time is not None:
-        position =  - (server_time - handle_schedule_time)
+        position = server_time - player[0].Position()
     elif status == STOP and player_position is not None:
         if player_position is not None:
             position = player_position
