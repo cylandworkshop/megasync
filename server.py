@@ -18,6 +18,7 @@ slave_ids = [x for x in range(1, 40)]
 # slave_ids = [17, 18, 23, 24]
 # slave_ids = [13, 14]
 d_270_idx = [6, 30]
+d_90_idx = []
 
 LOG_WINDOW_HEIGHT = 10
 
@@ -47,6 +48,9 @@ def get_video(idx):
     if idx in d_270_idx:
         res.append("--orientation")
         res.append("270")
+    if idx in d_90_idx:
+        res.append("--orientation")
+        res.append("90")
 
     return res
 
