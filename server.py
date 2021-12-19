@@ -32,8 +32,8 @@ MAPPING_PATH = "mapping/"
 
 def get_video(idx):
     # res = ["/data/synctest.mp4"]
-    # res = [f"/data/{idx}.jpg.mp4"]
-    res = [f"/data/{idx}.mp4"]
+    res = [f"/data/{idx}.jpg.mp4"]
+    # res = [f"/data/{idx}.mp4"]
     # res = ["/data/7.jpg.mp4"]
     # res = ["/data/11.jpg.mp4"]
     # res = ["/data/13.jpg.mp4"]
