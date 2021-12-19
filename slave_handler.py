@@ -21,11 +21,11 @@ class SlaveHandler():
     def get_idx(self):
         return self.idx
 
-    def get_last_position(self):
-        if self.last_status[1] is not None:
+    def get_last_position(self, server_time):
+        if self.last_status is not None and self.last_status[0] == 3 and self.last_status[1] is not None:
             return self.last_status[1]
         else:
-            return 0
+            return server_time
 
     def update(self, stdscr, x, y, server_time, mean_value):
         color = curses.color_pair(3)

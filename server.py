@@ -85,7 +85,7 @@ def update_time_diff():
 
 def get_server_time():
     if time_diff is None:
-        return None
+        return time()
 
     return time() - time_diff
 
@@ -226,11 +226,14 @@ def c_main(stdscr):
                 slaves[idx].set_corner(corner, x)
         
         slaves[idx].send_geometry()
-    
-    start_time = time()
+
     while True:
         size = stdscr.getmaxyx()
-        song_duration = time() - start_time
+        server_time = get_server_time()
+
+        start_time = statistics.median([x.get_last_position(server_time) for x in slaves])
+
+        song_duration = server_time - start_time
 
         # draw song duration
         stdscr.addstr(size[0] - 1, 0, " " * int(size[1]/2))
@@ -246,12 +249,8 @@ def c_main(stdscr):
         draw_beat(stdscr, measure)
         render_log_window(stdscr, log)
 
-
-        mean_value = statistics.median([x.get_last_position() for x in slaves])
-
-        server_time = get_server_time()
         for i, slave in enumerate(slaves):
-            draw_slave(stdscr, slave, i, server_time, select_slave, mean_value)
+            draw_slave(stdscr, slave, i, server_time, select_slave, start_time)
 
         def apply_slave(selector, method):
             if selector is None:
@@ -279,14 +278,6 @@ def c_main(stdscr):
 
             elif mapping and select_slave is not None:
                 handle_mapping(chr(char), select_slave)
-
-            elif char == ord(' '):
-                current_bar = int(song_duration / BAR)
-                start_time = time() - current_bar * BAR
-            elif char == curses.KEY_LEFT:
-                start_time += 1/BEAT
-            elif char == curses.KEY_RIGHT:
-                start_time -= 1/BEAT
 
             elif char == ord('\n'):
                 append_log("saving mapping")
@@ -328,8 +319,8 @@ def c_main(stdscr):
 
             elif char == ord('q') and select_slave is not None:
                 POSITION_OFFSET = 2
-                new_position = (get_server_time() - mean_value) + POSITION_OFFSET
-                new_schedule = get_server_time() + POSITION_OFFSET
+                new_position = song_duration + POSITION_OFFSET
+                new_schedule = server_time + POSITION_OFFSET
                 append_log(f"resync {slaves[select_slave].get_idx()}")
                 slaves[select_slave].pause()
                 sleep(0.1)
@@ -359,6 +350,17 @@ def c_main(stdscr):
 
             else:
                 append_log(f"you pressed {str(char)}")
+
+
+            '''
+            elif char == ord(' '):
+                current_bar = int(song_duration / BAR)
+                start_time = time() - current_bar * BAR
+            elif char == curses.KEY_LEFT:
+                start_time += 1/BEAT
+            elif char == curses.KEY_RIGHT:
+                start_time -= 1/BEAT
+            '''
         
         sleep(0.05)
     return 0
