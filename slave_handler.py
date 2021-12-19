@@ -41,6 +41,7 @@ class SlaveHandler():
 
         status = "???"
         position_text = ""
+        position_color = curses.color_pair(0)
         if self.last_status is not None:
             if self.last_status[0] == 0:
                 status = "idle"
@@ -55,7 +56,21 @@ class SlaveHandler():
                 position_text = "%.03f" % ((self.last_status[1] - server_time))
             elif self.last_status[0] == 3 and self.last_status[1] is not None:
                 status = "play"
-                position_text = "drift: %.03f" % ((self.last_status[1]))
+                position = server_time - self.last_status[1]
+                position_diff = position - mean_value
+                if position_diff > 100:
+                    position_diff = 100
+                elif position_diff < -100:
+                    position_diff = -100
+
+                if abs(position_diff) > 0.1:
+                    position_color = curses.color_pair(2)
+
+                position_text = "%02d:%06.3f diff: %.03f" % (
+                    int(position/60),
+                    position % 60,
+                    position_diff
+                )
 
         time_status = ""
         time_color = curses.color_pair(0)
@@ -72,7 +87,7 @@ class SlaveHandler():
         stdscr.addstr(y, x, f"slave {self.idx}", color)
         stdscr.addstr(" %s (%.01f) |" % (status, time() - self.last_status_time))
         stdscr.addstr(f" {time_status}", time_color)
-        stdscr.addstr(y + 1, x, position_text)
+        stdscr.addstr(y + 1, x, position_text, position_color)
 
     def send_message(self, topic, payload, qos=1):
         self.client.publish(f"/m/{self.idx}/{topic}", payload=json.dumps(payload), qos=qos, retain=False)
