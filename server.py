@@ -231,7 +231,13 @@ def c_main(stdscr):
         size = stdscr.getmaxyx()
         server_time = get_server_time()
 
-        start_time = statistics.median([x.get_last_position(server_time) for x in slaves])
+        last_positions = [x.get_last_position() for x in slaves]
+        last_positions = list(filter(lambda x: x is not None, last_positions))
+
+        if len(last_positions) > 0:
+            start_time = statistics.median(last_positions)
+        else:
+            start_time = server_time
 
         song_duration = server_time - start_time
 

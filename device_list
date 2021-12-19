@@ -16,10 +16,10 @@ master-50.local
 #slave-14.local
 #slave-15.local
 #slave-16.local
-#slave-17.local
-#slave-18.local
-#slave-19.local
-#slave-20.local
+slave-17.local
+slave-18.local
+slave-19.local
+slave-20.local
 #slave-21.local
 #slave-22.local
 #slave-23.local
