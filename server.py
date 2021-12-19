@@ -6,6 +6,8 @@ import paho
 import paho.mqtt.client as mqtt
 import paho.mqtt.subscribe as subscribe
 
+import statistics
+
 import ntplib
 
 import json
@@ -139,7 +141,7 @@ def draw_beat(stdscr, measure):
 
 SLAVE_LINES = 2
 
-def draw_slave(stdscr, slave, idx, server_time, selected):
+def draw_slave(stdscr, slave, idx, server_time, selected, mean_value):
     size = stdscr.getmaxyx()
     unwrap_y = idx * SLAVE_LINES
     size_y = size[0] - LOG_WINDOW_HEIGHT - 1
@@ -157,7 +159,7 @@ def draw_slave(stdscr, slave, idx, server_time, selected):
     for i in range(SLAVE_LINES):
         stdscr.addstr(y + i, x, " " * size_x)
 
-    slave.update(stdscr, x, y, server_time)
+    slave.update(stdscr, x, y, server_time, mean_value)
 
 corner = 0
 move = False
@@ -244,9 +246,12 @@ def c_main(stdscr):
         draw_beat(stdscr, measure)
         render_log_window(stdscr, log)
 
+
+        mean_value = statistics.median([x.get_last_position() for x in slaves])
+
         server_time = get_server_time()
         for i, slave in enumerate(slaves):
-            draw_slave(stdscr, slave, i, server_time, select_slave)
+            draw_slave(stdscr, slave, i, server_time, select_slave, mean_value)
 
         def apply_slave(selector, method):
             if selector is None:
@@ -320,6 +325,20 @@ def c_main(stdscr):
             elif char == ord('g'):
                 append_log("send geometry")
                 apply_slave(select_slave, lambda x: x.send_geometry())
+
+            elif char == ord('q') and select_slave is not None:
+                POSITION_OFFSET = 2
+                new_position = (get_server_time() - mean_value) + POSITION_OFFSET
+                new_schedule = get_server_time() + POSITION_OFFSET
+                append_log(f"resync {slaves[select_slave].get_idx()}")
+                slaves[select_slave].pause()
+                sleep(0.1)
+                slaves[select_slave].seek(new_position)
+                sleep(0.1)
+                slaves[select_slave].seek(new_position)
+                sleep(0.1)
+                slaves[select_slave].schedule(new_schedule)
+
 
             elif char == ord('p'):
                 append_log("pause")
