@@ -35,8 +35,8 @@ MAPPING_PATH = "mapping/"
 
 def get_video(idx):
     # res = ["/data/synctest.mp4"]
-    res = [f"/data/{idx}.jpg.mp4"]
-    # res = [f"/data/{idx}.mp4"]
+    # res = [f"/data/{idx}.jpg.mp4"]
+    res = [f"/data/{idx}.mp4"]
     # res = ["/data/7.jpg.mp4"]
     # res = ["/data/11.jpg.mp4"]
     # res = ["/data/13.jpg.mp4"]
@@ -324,8 +324,8 @@ def c_main(stdscr):
                 apply_slave(select_slave, lambda x: x.send_geometry())
 
             elif char == ord('q') and select_slave is not None:
-                POSITION_OFFSET = 2
-                new_position = song_duration + POSITION_OFFSET
+                POSITION_OFFSET = 1
+                new_position = song_duration + POSITION_OFFSET - 0.0
                 new_schedule = server_time + POSITION_OFFSET
                 append_log(f"resync {slaves[select_slave].get_idx()}")
                 slaves[select_slave].pause()
